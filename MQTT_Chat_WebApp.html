@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MQTT Chat WebApp</title>
+    <link href='https://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    
+  </head>
+  <body>
+    
+    <div class='container'>
+      <div class='page-header'>
+        <h1>
+          MQTT Chat WebApp
+        </h1>
+      </div>
+      
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
+      <div class="alert alert-info " id='error' style='display: none'></div>
+      <link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
+      <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+      
+
+      <div class='row'>
+        <div class="well">
+        
+            <form id='send'>
+              <label for="basic-url">Hi <span id='topicText' name='topicText' >User</span></label>
+              <input type="hidden" id='topic' name='topic' class="form-control"  required placeholder="username" value="My_UserName">
+              <div class="input-group">
+                <input id='message' name='message' required type="text" class="form-control input-sm" placeholder="Write your message here..." />
+                <span class="input-group-btn">
+                <button type="submit" id="send_button" class="btn btn-primary btn-sm" id="btn-chat">Send</button>
+                </span>
+              </div>
+            </form>
+        
+            <h3>Messages</h3>
+            <div class='span9 pre-scrollable'>
+              <table class='table table-striped'>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Message</th>
+                    <th>Name</th>
+                  </tr>
+                </thead>
+                <tbody id='msgs'></tbody>
+              </table>
+            </div>
+            
+        </div>
+      </div>
+      <style>
+        pre { font-size: 11px; }
+      </style>
+      <script>
+        var form = document.forms["send"];
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          if(!document.getElementById("topic").value) return;
+          if(!document.getElementById("message").value) return;
+          message = new Paho.MQTT.Message(document.getElementById("message").value);
+          message.destinationName = document.getElementById("topic").value;  //building/floor-1/hvac/in
+          client.send(message);
+          document.getElementById("message").value = ''; 
+        });
+
+        // called when the switch changed by clicking
+        $(function() {
+            defaultperson = "Harry-"+ Math.floor(Math.random() * 9000 + 1000);
+            let person = prompt("Please enter your name", defaultperson);
+
+            if (person != null) {
+                document.getElementById("topic").value = person;
+                document.getElementById("topicText").innerHTML = person;
+            }else{
+                person = defaultperson;
+                document.getElementById("topic").value = person;
+                document.getElementById("topicText").innerHTML = person;
+            }
+        
+            $('#toggle-switch').change(function() {
+                document.getElementById("topic").value = 'building/floor-1/hvac/in';
+                document.getElementById("message").value = $(this).prop('checked') ? 1 : 0;
+                document.getElementById("send_button").click();
+            })
+        })
+        
+        // called when the client connects
+        function onConnect() {
+          // Once a connection has been made, make a subscription and send a message.
+          console.log("onConnect");
+          var errDiv = document.getElementById("error");
+          errDiv.textContent = "Connected";
+          errDiv.style.display = "block";
+          client.subscribe("#");
+        }
+        
+        // called when the client loses its connection
+        function onConnectionLost(responseObject) {
+          if (responseObject.errorCode !== 0) {
+            console.log("onConnectionLost:", responseObject.errorMessage);
+            var errDiv = document.getElementById("error");
+            errDiv.textContent = "Connection Lost";
+            errDiv.style.display = "block";
+            setTimeout(function() { client.connect() }, 5000);
+          }
+        }
+        
+        // called when a message arrives
+        function onMessageArrived(message) {
+            console.log(message);
+          var tdTopicOther = document.createElement("td");
+          var tdTopicMy = document.createElement("td");
+
+          var  tdTopictextContent = message.destinationName;
+          if(tdTopictextContent== document.getElementById("topic").value){
+            tdTopicOther.textContent = '     ';
+            tdTopicMy.textContent = '<<     ' + tdTopictextContent;
+            tdTopicMy.classList.add("info");
+          }else{
+            tdTopicOther.textContent = tdTopictextContent + '     >>';
+            tdTopicMy.textContent = '     ';
+          }
+          
+        
+          var tdMsg = document.createElement("td");
+          try {
+            tdMsg.textContent = message.payloadString;
+          } catch (e) {
+            //tdMsg.textContent = "*** Binary data ***";
+            var pre = document.createElement("pre");
+            var base64 = btoa(String.fromCharCode.apply(null, message.payloadBytes));
+            pre.textContent = base64.replace(/(.{72})/g, "$1\n");
+            var note = document.createElement("em");
+            note.textContent = "Binary data (base64 encoded)"
+            tdMsg.appendChild(note);
+            tdMsg.appendChild(pre)
+          }
+        
+          var tr = document.createElement("tr");
+          tr.appendChild(tdTopicOther);
+          tr.appendChild(tdMsg);
+          tr.appendChild(tdTopicMy);
+
+          /*
+          var obj = JSON.parse(message.payloadString);
+          var checkeduncheck = obj.switch ? 'on' : 'off';
+          if($('#toggle-switch').prop('checked') != $('#toggle-switch').prop('checked')) {
+
+            //$('#toggle-switch').bootstrapToggle(checkeduncheck);
+          }
+          $('#toggle-switch-mqtt').bootstrapToggle(checkeduncheck);
+          */
+          document.getElementById("msgs").insertBefore(tr, document.getElementById("msgs").childNodes[0])
+        }
+        
+        function onFailure(invocationContext, errorCode, errorMessage) {
+          var errDiv = document.getElementById("error");
+          errDiv.textContent = "Could not connect to WebSocket server, most likely you're behind a firewall that doesn't allow outgoing connections to port 34679";
+          errDiv.style.display = "block";
+        }
+        
+        var clientId = "ChatWebAppWS" + Math.floor(Math.random() * 9000 + 1000);
+        // Create a client instance
+        var client = new Paho.MQTT.Client("m20.cloudmqtt.com", 34679, clientId);
+        
+        // set callback handlers
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+        
+        // connect the client
+        client.connect({
+          useSSL: true,
+          userName: "hasib_khan",
+          password: "hasib@khan",
+          onSuccess: onConnect,
+          onFailure: onFailure
+        });
+      </script>
+    </div>
+  </body>
+</html>

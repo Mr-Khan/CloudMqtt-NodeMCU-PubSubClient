@@ -18,7 +18,7 @@
       </div>
       
       <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js" type="text/javascript"></script>
-      <div class="alert alert-info " id='error' style='display: none'></div>
+      <div class="alert alert-info " id='error' style='display: none'></div><span id="lastSync"></span><br/>
       <link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
       <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
         <label for="temperature" class="form-label">Temperature -- <span id="temperatureVal">15<!-- Default value --></span></label>
@@ -117,7 +117,8 @@
                                             + currentdate.getHours() + ":"  
                                             + currentdate.getMinutes() + ":" 
                                             + currentdate.getSeconds();
-                console.log(lastSyncDatetime);
+                //console.log(lastSyncDatetime);
+                document.getElementById("lastSync").textContent = lastSyncDatetime;
             }
             
             
